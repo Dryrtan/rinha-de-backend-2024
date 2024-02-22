@@ -6,7 +6,7 @@ services:
     ports:
       - '9999:80'
     volumes:
-      - ./src:/var/www/html
+      - ./api:/var/www/html
       - ./default.conf:/etc/nginx/conf.d/default.conf
     links:
       - php-fpm
@@ -16,5 +16,5 @@ services:
     build:
       context: .
       dockerfile: php/Dockerfile
-    # volumes:
-    #   - ./src:/var/www/html
+    volumes:
+      - ./api:/var/www/html
