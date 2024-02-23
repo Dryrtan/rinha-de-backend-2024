@@ -2,25 +2,47 @@
 <html>
 
 <head>
-    <title>Aviso</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
-    <!-- <style>
+  <title>Aviso</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <style>
     body {
-      background-image: url('https://c.tenor.com/WD1FFAiQE1oAAAAC/tenor.gif');
+      background-color: #333;
+      color: aquamarine;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
     }
-  </style> -->
+
+    div {
+      /* Centralizar no centro da tela no eixo x e y */
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-200%, -50%);
+    }
+  </style>
+  <!-- https://c.tenor.com/WD1FFAiQE1oAAAAC/tenor.gif -->
 </head>
 
 <body>
+  <div class="container">
+    <div class="card">
+        <figure class="image is-4by3">
+          <img src="https://c.tenor.com/WD1FFAiQE1oAAAAC/tenor.gif" alt="gif">
+        </figure>
+    </div>
     <h1>Aviso</h1>
-    <p>Desculpe, este conteúdo não está disponível no momento.</p>
     <p>Para realizar operações com clientes, por favor use as rotas da API:</p>
     <ul>
-        <li><code>POST /clientes/[id]/transacoes</code></li>
-        <li><code>GET /clientes/[id]/extrato</code></li>
+      <li><code>POST /clientes/[id]/transacoes</code></li>
+      <li><code>GET /clientes/[id]/extrato</code></li>
     </ul>
+  </div>
 </body>
 
 </html>
