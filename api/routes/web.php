@@ -43,10 +43,9 @@ $router->post('/clientes/{id_client}/transacoes', function ($id_client) {
 
         if ($transaction_type == 'c') {
             app('db')->update('UPDATE saldos SET saldo = saldo + ? WHERE cliente_id = ?', [$transaction_value, $id_client]);
-            app('db')->update("INSERT INTO transacoes (cliente_id, tipo, valor, descricao) VALUES ($id_client,'$transaction_type',$transaction_value,'$transaction_descricao')");
         } else {
-            $ammout_available = $client_limit - $transaction_value;
-            if ($ammout_available < ($client_limit - $client_limit)) {
+            $ammout_available = $client_limit - $transaction_value - ($client_ammout - ($client_ammout * 2));
+            if ($ammout_available <= ($client_limit - ($client_limit * 2))) {
                 return response()->json([
                     'mensage' => 'Este cliente não possui limite para este valor.'
                 ], 422);
@@ -57,11 +56,13 @@ $router->post('/clientes/{id_client}/transacoes', function ($id_client) {
             );
         }
 
+        app('db')->update("INSERT INTO transacoes (cliente_id, tipo, valor, descricao) VALUES ($id_client,'$transaction_type',$transaction_value,'$transaction_descricao')");
         app('db')->select('SELECT release_lock(?)', [$id_client]);
 
         return response()->json([
             'limite' => 0,
-            'saldo' => 0
+            'saldo' => 0,
+            'teste' => $ammout_available
         ], 200);
     }
 
