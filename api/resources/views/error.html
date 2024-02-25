@@ -1,48 +1,75 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
 
 <head>
-  <title>Aviso</title>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rinha de Back-end</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.css" rel="stylesheet" />
   <style>
-    body {
+    /* body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
       background-color: #333;
-      color: aquamarine;
-      width: 100vw;
-      height: 100vh;
+      color: #fff;
+      text-align: center;
+    } */
+    html {
       display: flex;
-      flex-direction: column;
+      flex-flow: row nowrap;
       justify-content: center;
+      align-content: center;
       align-items: center;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: #292929;
     }
 
-    div {
-      /* Centralizar no centro da tela no eixo x e y */
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-200%, -50%);
+    body {
+      margin: 0;
+      flex: 0 1 auto;
+      align-self: auto;
+      max-width: 900px;
+      max-height: 600px;
+      background: transparent;
+      -webkit-box-shadow: 0px 0px 96px 0px rgba(0, 0, 0, 0.75);
+      -moz-box-shadow: 0px 0px 96px 0px rgba(0, 0, 0, 0.75);
+      box-shadow: 0px 0px 96px 0px rgba(198, 198, 198, 0.75);
     }
   </style>
-  <!-- https://c.tenor.com/WD1FFAiQE1oAAAAC/tenor.gif -->
 </head>
+<!-- https://media1.tenor.com/m/XTW6uCVMJIQAAAAC/tiringa-charles-e-tiringa.gif -->
 
 <body>
-  <div class="container">
-    <div class="card">
-        <figure class="image is-4by3">
-          <img src="https://c.tenor.com/WD1FFAiQE1oAAAAC/tenor.gif" alt="gif">
-        </figure>
+  <div class="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
+    <div class="flex justify-center">
+      <img class="rounded-lg p-1" src="https://media1.tenor.com/m/XTW6uCVMJIQAAAAC/tiringa-charles-e-tiringa.gif"
+        alt="" />
     </div>
-    <h1>Aviso</h1>
-    <p>Para realizar operações com clientes, por favor use as rotas da API:</p>
-    <ul>
-      <li><code>POST /clientes/[id]/transacoes</code></li>
-      <li><code>GET /clientes/[id]/extrato</code></li>
-    </ul>
+    <div class="p-5">
+      <a href="#">
+        <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+          Para realizar operações com clientes, por favor use as rotas da API:
+        </h5>
+      </a>
+      <p class="mb-3 font-normal text-gray-700 dark:text-gray-400">
+        <code class="bg-red-500 text-white rounded p-1">
+          GET /clientes/[id]/extrato
+        </code>
+        <br />
+        <code class="bg-red-500 text-white rounded p-1">
+          POST /clientes/[id]/transacoes
+        </code>
+      </p>
+      <span>
+        <a class="text-blue-500" href="https://github.com/zanfranceschi/rinha-de-backend-2024-q1/" target="_blank">
+          Repositório da 2ª edição da Rinha de Backend
+        </a>
+      </span>
+    </div>
   </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.js"></script>
 </body>
 
 </html>

@@ -19,8 +19,9 @@ $router->get('/', function () use ($router) {
 });
 
 $router->get('/clientes/{id_client}/extrato', function ($id_client) {
-    // Return json
+    $results = app('db')->select('SELECT * FROM clientes WHERE id = ?', [$id_client]);
     return response()->json([
-        'id_client' => $id_client
+        'id_client' => $id_client,
+        'results' => $results
     ]);
 });
