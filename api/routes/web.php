@@ -19,9 +19,8 @@ $router->get('/', function () use ($router) {
 });
 
 $router->get('/clientes/{id_client}/extrato', function ($id_client) {
-    $results = app('db')->select('SELECT * FROM clientes WHERE id = ?', [$id_client]);
+    $results = app('db')->select('SELECT limite FROM clientes WHERE id = ?', [$id_client]);
     return response()->json([
-        'id_client' => $id_client,
-        'results' => $results
+        'limite' => $results[0]->limite
     ]);
 });
