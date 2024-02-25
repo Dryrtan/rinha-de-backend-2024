@@ -1,0 +1,7 @@
+api/vendor
+api/.idea
+api/Homestead.json
+api/Homestead.yaml
+api/.env
+/api.phpunit.result.cache
+composer.phar
