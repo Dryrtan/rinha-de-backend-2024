@@ -13,6 +13,8 @@
 |
 */
 
+date_default_timezone_set('America/Bahia'); //define timezone como da Bahia, pois esse estado não é afetado por horários de verao
+
 function getClientDetails($id_client)
 {
     return app('db')->select(
@@ -54,10 +56,15 @@ $router->get('/', function () use ($router) {
 });
 
 $router->get('/clientes/{id_client}/extrato', function ($id_client) {
-    $results = app('db')->select('SELECT limite FROM clientes WHERE id = ?', [$id_client]);
-
+    $transactions = app('db')->select('SELECT valor, tipo, descricao, realizada_em FROM transacoes WHERE cliente_id = ? order by realizada_em desc limit 10', [$id_client]);
+    $founds = getClientDetails($id_client);
     return response()->json([
-        'limite' => $results[0]->limite
+        'saldo' => [
+            'total' => $founds[0]->saldo,
+            'data_extrato' => date("Y-m-d\TH:i:s.uP"),
+            'limite' => $founds[0]->limite,            
+        ],
+        'ultimas_transacoes' => $transactions
     ]);
 });
 
@@ -80,7 +87,7 @@ $router->post('/clientes/{id_client}/transacoes', function ($id_client) {
             if ($ammout_available < returnNegative($client_limit)) {
                 app('db')->select('SELECT release_lock(?)', [$id_client]);
                 return response()->json([
-                    'mensage' => 'Este cliente não possui limite para este valor.'
+                    'mensage' => 'Insufficient funds'
                 ], 422);
             }
             updateSaldo($id_client, $client_ammout - $transaction_value);
@@ -90,9 +97,8 @@ $router->post('/clientes/{id_client}/transacoes', function ($id_client) {
         app('db')->select('SELECT release_lock(?)', [$id_client]);
 
         return response()->json([
-            'valor' => $transaction_value,
-            'tipo' => $transaction_type,
-            'descricao' => $transaction_descricao
+            'limite' => $client_limit,
+            'saldo' => getClientDetails($id_client)[0]->saldo
         ], 200);
     }
 
@@ -101,49 +107,3 @@ $router->post('/clientes/{id_client}/transacoes', function ($id_client) {
         'message' => $islocked[0]
     ], 512);
 });
-
-// $router->post('/clientes/{id_client}/transacoes', function ($id_client) {
-//     $transaction_value = request('valor');
-//     $transaction_type = request('tipo');
-//     $transaction_descricao = request('descricao');
-
-//     $islocked = app('db')->select('SELECT acquire_lock(?)', [$id_client]);
-
-//     if ($islocked[0]->acquire_lock) {
-//         $client_details = app('db')->select(
-//             'SELECT c.id, c.limite, s.saldo FROM clientes c join saldos s ON c.id = s.cliente_id WHERE c.id = ?',
-//             [$id_client]
-//         );
-//         $client_limit = $client_details[0]->limite;
-//         $client_ammout = $client_details[0]->saldo;
-
-//         if ($transaction_type == 'c') {
-//             app('db')->update('UPDATE saldos SET saldo = saldo + ? WHERE cliente_id = ?', [$transaction_value, $id_client]);
-//         } else {
-//             $ammout_available = $client_limit - $transaction_value - ($client_ammout - ($client_ammout * 2));
-//             if ($ammout_available <= ($client_limit - ($client_limit * 2))) {
-//                 return response()->json([
-//                     'mensage' => 'Este cliente não possui limite para este valor.'
-//                 ], 422);
-//             }
-//             app('db')->update(
-//                 'UPDATE saldos SET saldo = ? WHERE cliente_id = ?',
-//                 [$client_ammout - $transaction_value, $id_client]
-//             );
-//         }
-
-//         app('db')->update("INSERT INTO transacoes (cliente_id, tipo, valor, descricao) VALUES ($id_client,'$transaction_type',$transaction_value,'$transaction_descricao')");
-//         app('db')->select('SELECT release_lock(?)', [$id_client]);
-
-//         return response()->json([
-//             'limite' => 0,
-//             'saldo' => 0,
-//             'teste' => $ammout_available
-//         ], 200);
-//     }
-
-//     return response()->json([
-//         'status' => 'error',
-//         'message' => $islocked[0]
-//     ], 512);
-// });
