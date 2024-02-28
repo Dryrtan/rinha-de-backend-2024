@@ -18,7 +18,7 @@ date_default_timezone_set('America/Bahia'); //define timezone como da Bahia, poi
 function getClientDetails($id_client)
 {
     return app('db')->select(
-        'SELECT c.id, c.limite, s.saldo FROM clientes c join saldos s ON c.id = s.cliente_id WHERE c.id = ?',
+        'SELECT c.id, c.limite, s.saldo, DATE_FORMAT(realizada_em, "%d/%m/%Y %H:%i:%s") as dataAtual FROM clientes c join saldos s ON c.id = s.cliente_id WHERE c.id = ?',
         [$id_client]
     );
 }
@@ -59,9 +59,10 @@ $router->get('/clientes/{id_client}/extrato', function ($id_client) {
     $transactions = app('db')->select('SELECT valor, tipo, descricao, realizada_em FROM transacoes WHERE cliente_id = ? order by realizada_em desc limit 10', [$id_client]);
     $founds = getClientDetails($id_client);
     return response()->json([
+        // TODO: Get current date from database
         'saldo' => [
             'total' => $founds[0]->saldo,
-            'data_extrato' => date("Y-m-d\TH:i:s.uP"),
+            'data_extrato' => date('d/m/Y H:i:s'),
             'limite' => $founds[0]->limite,            
         ],
         'ultimas_transacoes' => $transactions
