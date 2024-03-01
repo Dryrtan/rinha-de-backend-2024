@@ -12,8 +12,9 @@
 | and give it the Closure to call when that URI is requested.
 |
 */
-
-date_default_timezone_set('America/Bahia'); //define timezone como da Bahia, pois esse estado não é afetado por horários de verao
+define('HTTP_STATUS_NOT_FOUND', 404);
+define('HTTP_STATUS_UNPROCESSABLE_ENTITY', 422);
+date_default_timezone_set('America/Sao_Paulo');
 
 function getClientDetails($id_client)
 {
@@ -56,89 +57,24 @@ $router->get('/', function () use ($router) {
 });
 
 $router->get('/clientes/{id_client}/extrato', function ($id_client) {
+    if (!is_int((int)$id_client) || $id_client < 1 || !getClientDetails($id_client)) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Invalid client id'
+        ], HTTP_STATUS_NOT_FOUND);
+    }
+
     $transactions = app('db')->select('SELECT valor, tipo, descricao, realizada_em FROM transacoes WHERE cliente_id = ? order by realizada_em desc limit 10', [$id_client]);
     $founds = getClientDetails($id_client);
     return response()->json([
-        // TODO: Get current date from database
         'saldo' => [
             'total' => $founds[0]->saldo,
             'data_extrato' => $founds[0]->data_atual,
             'limite' => $founds[0]->limite,            
         ],
         'ultimas_transacoes' => $transactions
-    ]);
+    ], 200);
 });
-
-// $router->post('/clientes/{id_client}/transacoes', function ($id_client) {
-//     if (!is_int($id_client) || $id_client < 1 || !getClientDetails($id_client)) {
-//         return response()->json([
-//             'status' => 'error',
-//             'message' => 'Invalid client id'
-//         ], 404);
-//     }
-
-//     if (!request('valor') || !request('tipo') || !request('descricao')) {
-//         return response()->json([
-//             'status' => 'error',
-//             'message' => 'Missing transaction data'
-//         ], 422);
-//     }
-
-//     if (!in_array(request('tipo'), ['c', 'd'])) {
-//         return response()->json([
-//             'status' => 'error',
-//             'message' => 'Invalid transaction type'
-//         ], 422);
-//     }
-
-//     if (!is_numeric(request('valor'))) {
-//         return response()->json([
-//             'status' => 'error',
-//             'message' => 'Invalid transaction value'
-//         ], 422);
-//     }
-//     $transaction_value = request('valor');
-//     $transaction_type = request('tipo');
-//     $transaction_descricao = request('descricao');
-
-//     $islocked = app('db')->select('SELECT acquire_lock(?)', [$id_client]);
-
-//     if ($islocked[0]->acquire_lock) {
-//         $client_details = getClientDetails($id_client);
-//         $client_limit = $client_details[0]->limite;
-//         $client_ammout = $client_details[0]->saldo;
-
-//         if ($transaction_type == 'c') {
-//             updateSaldo($id_client, $client_ammout + $transaction_value);
-//         } else {
-//             $ammout_available = $client_ammout - $transaction_value;
-//             if ($ammout_available < returnNegative($client_limit)) {
-//                 app('db')->select('SELECT release_lock(?)', [$id_client]);
-//                 return response()->json([
-//                     'mensage' => 'Insufficient funds'
-//                 ], 422);
-//             }
-//             updateSaldo($id_client, $client_ammout - $transaction_value);
-//         }
-
-//         insertTransaction($id_client, $transaction_type, $transaction_value, $transaction_descricao);
-//         app('db')->select('SELECT release_lock(?)', [$id_client]);
-
-//         return response()->json([
-//             'limite' => $client_limit,
-//             'saldo' => getClientDetails($id_client)[0]->saldo
-//         ], 200);
-//     }
-
-//     return response()->json([
-//         'status' => 'error',
-//         'message' => $islocked[0]
-//     ], 512);
-// });
-
-
-define('HTTP_STATUS_NOT_FOUND', 404);
-define('HTTP_STATUS_UNPROCESSABLE_ENTITY', 422);
 
 $router->post('/clientes/{id_client}/transacoes', function ($id_client) {
     if (!is_int((int)$id_client) || $id_client < 1 || !getClientDetails($id_client)) {
@@ -221,7 +157,7 @@ function validateTransactionData($transactionData) {
         return false;
     }
 
-    if (strlen($transactionData['descricao']) > 10) {
+    if (strlen($transactionData['descricao']) > 10 && strlen($transactionData['descricao']) < 1) {
         return false;
     }
 

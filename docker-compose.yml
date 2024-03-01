@@ -1,20 +1,67 @@
-version: '3.9'
+version: "3.5"
 
 services:
-  web:
-    image: nginx:latest
-    ports:
-      - '9999:80'
-    volumes:
-      - ./api:/var/www/html
-      - ./default.conf:/etc/nginx/conf.d/default.conf
-    links:
-      - php-fpm
-
-  php-fpm:
-    #image: php:8-fpm
+  app1: &app
+    # image: ana/minha-api-matadora:latest
+    hostname: api01
+    container_name: app1
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_URL=http://localhost
+      - APP_TIMEZONE=UTC
+      - LOG_CHANNEL=stack
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres-db
+      - DB_PORT=5432
+      - DB_DATABASE=rinha_back_end
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=rinha_back_end-PegaFogoCabare
+      - QUEUE_CONNECTION=sync
     build:
       context: .
       dockerfile: php/Dockerfile
+    ports:
+      - "8000:8080"
+    depends_on:
+        postgres:
+          condition: service_healthy
+  
+  app2:
+    <<: *app
+    hostname: app2
+    container_name: app2
+    ports:
+      - "8001:8080"
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - '9999:9999'
     volumes:
-      - ./api:/var/www/html
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app1
+      - app2
+
+  postgres:
+    image: postgres:16-alpine
+    hostname: postgres-db
+    container_name: postgres
+    command: -c 'config_file=/docker-entrypoint-initdb.d/postgresql.conf'
+    environment:
+      - POSTGRES_PASSWORD=rinha_back_end-PegaFogoCabare
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=rinha_back_end
+    volumes:
+      - ./config/postgresql/script.sql:/docker-entrypoint-initdb.d/script.sql
+      - ./config/postgresql/postgresql.conf:/docker-entrypoint-initdb.d/postgresql.conf
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      timeout: 5s
+      interval: 5s
+      start_period: 10s
+      retries: 20
