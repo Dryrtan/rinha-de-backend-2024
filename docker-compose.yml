@@ -1,13 +1,13 @@
 version: "3.5"
 
 services:
-  app1: &app
+  api-01: &api
     # image: ana/minha-api-matadora:latest
     hostname: api01
-    container_name: app1
+    container_name: api-01
     environment:
       - APP_ENV=local
-      - APP_DEBUG=true
+      - APP_DEBUG=false
       - APP_URL=http://localhost
       - APP_TIMEZONE=UTC
       - LOG_CHANNEL=stack
@@ -21,18 +21,19 @@ services:
     build:
       context: .
       dockerfile: php/Dockerfile
-    ports:
-      - "8000:8080"
     depends_on:
         postgres:
           condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.45"
+          memory: "100MB"
   
-  app2:
-    <<: *app
-    hostname: app2
-    container_name: app2
-    ports:
-      - "8001:8080"
+  api-02:
+    <<: *api
+    hostname: api-02
+    container_name: api-02
 
   nginx:
     image: nginx:latest
@@ -42,8 +43,13 @@ services:
     volumes:
       - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - app1
-      - app2
+      - api-01
+      - api-02
+    deploy:
+      resources:
+        limits:
+          cpus: "0.20"
+          memory: "30MB"
 
   postgres:
     image: postgres:16-alpine
@@ -65,3 +71,13 @@ services:
       interval: 5s
       start_period: 10s
       retries: 20
+    deploy:
+      resources:
+        limits:
+          cpus: "0.40"
+          memory: "220MB"
+
+networks:
+  default:
+    driver: bridge
+    name: rinha-2024q1

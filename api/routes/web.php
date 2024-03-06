@@ -24,6 +24,13 @@ function getClientDetails($id_client)
     );
 }
 
+/**
+ * Retrieve the transaction value for a given client ID from the database.
+ *
+ * @param int $id_client The ID of the client
+ * @throws DatabaseException If there is an error with the database query
+ * @return array The transaction value for the client
+ */
 function getTransactionValue($id_client)
 {
     return app('db')->select(
@@ -32,14 +39,27 @@ function getTransactionValue($id_client)
     );
 }
 
-function updateSaldo($id_client, $new_saldo)
+
+function updateSaldo($amount, $id_client, $description, $transaction_type)
 {
-    app('db')->update(
-        'UPDATE saldos SET saldo = ? WHERE cliente_id = ?',
-        [$new_saldo, $id_client]
+    $result = app('db')->select(
+        'SELECT executar_transacao(?, ?, ?, ?)',
+        [(int)$amount, (int)$id_client, (string)$description, (string)$transaction_type]
     );
+
+    return $result;
 }
 
+/**
+ * Inserts a transaction into the database.
+ *
+ * @param datatype $id_client description
+ * @param datatype $transaction_type description
+ * @param datatype $transaction_value description
+ * @param datatype $transaction_descricao description
+ * @throws Some_Exception_Class description of exception
+ * @return Some_Return_Value
+ */
 function insertTransaction($id_client, $transaction_type, $transaction_value, $transaction_descricao)
 {
     app('db')->insert(
@@ -47,6 +67,12 @@ function insertTransaction($id_client, $transaction_type, $transaction_value, $t
     );
 }
 
+/**
+ * Returns the negative value of the input.
+ *
+ * @param int|float $value The input value
+ * @return int|float The negative value of the input
+ */
 function returnNegative($value)
 {
     return -abs($value);
@@ -55,6 +81,75 @@ function returnNegative($value)
 $router->get('/', function () use ($router) {
     return view('error');
 });
+
+
+/**
+ * Retrieves transaction data for a given client.
+ *
+ * @param int $id_client The ID of the client
+ * @return array|null The transaction data if valid, null otherwise
+ */
+function getTransactionData($id_client)
+{
+    $transactionData = request()->all();
+
+    if (!$transactionData['valor'] || !$transactionData['tipo'] || !$transactionData['descricao']) {
+        return null;
+    }
+
+    return $transactionData;
+}
+
+/**
+ * Validates transaction data.
+ *
+ * @param array $transactionData The transaction data to validate
+ * @return bool
+ */
+function validateTransactionData($transactionData)
+{
+    if (!isset($transactionData['valor']) || !is_numeric($transactionData['valor']) || $transactionData['valor'] < 0 || !is_int($transactionData['valor'])) {
+        return false;
+    }
+
+    if (!isset($transactionData['tipo']) || !in_array($transactionData['tipo'], ['c', 'd'])) {
+        return false;
+    }
+
+    if (!isset($transactionData['descricao']) || strlen($transactionData['descricao']) > 10 || strlen($transactionData['descricao']) < 1) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Acquires a lock for the given client ID.
+ *
+ * @param int $id_client The ID of the client
+ * @throws Some_Exception_Class Description of exception
+ * @return bool The result of the lock acquisition
+ */
+function acquireLock($id_client)
+{
+    $islocked = app('db')->select('SELECT acquire_lock(?)', [$id_client]);
+
+    return $islocked[0]->acquire_lock;
+}
+
+/**
+ * Releases a lock for the given client ID.
+ *
+ * @param int $id_client The ID of the client
+ * @throws Some_Exception_Class Description of exception
+ * @return bool The result of releasing the lock
+ */
+function releaseLock($id_client)
+{
+    $isReleased = app('db')->select('SELECT release_lock(?)', [$id_client]);
+
+    return $isReleased[0]->release_lock;
+}
 
 $router->get('/clientes/{id_client}/extrato', function ($id_client) {
     if (!is_int((int)$id_client) || $id_client < 1 || !getClientDetails($id_client)) {
@@ -70,7 +165,7 @@ $router->get('/clientes/{id_client}/extrato', function ($id_client) {
         'saldo' => [
             'total' => $founds[0]->saldo,
             'data_extrato' => $founds[0]->data_atual,
-            'limite' => $founds[0]->limite,            
+            'limite' => $founds[0]->limite,
         ],
         'ultimas_transacoes' => $transactions
     ], 200);
@@ -83,7 +178,7 @@ $router->post('/clientes/{id_client}/transacoes', function ($id_client) {
             'message' => 'Invalid client id'
         ], HTTP_STATUS_NOT_FOUND);
     }
-    
+
     $transactionData = getTransactionData($id_client);
 
     if (!validateTransactionData($transactionData)) {
@@ -93,44 +188,27 @@ $router->post('/clientes/{id_client}/transacoes', function ($id_client) {
         ], HTTP_STATUS_UNPROCESSABLE_ENTITY);
     }
 
-    $isLocked = acquireLock($id_client);
-
-    if (!$isLocked) {
-        $initWhile = 0;
-        while (!$isLocked && $initWhile < 10) {
-            $isLocked = acquireLock($id_client);
-            sleep(1);
-            $initWhile++;
-        }
-
-        if (!$isLocked) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Client ID is locked'
-            ], HTTP_STATUS_UNPROCESSABLE_ENTITY);
-        }
-    }
-
     $clientDetails = getClientDetails($id_client);
     $clientLimit = $clientDetails[0]->limite;
-    $clientBalance = $clientDetails[0]->saldo;
 
-    if ($transactionData['tipo'] == 'c') {
-        $newBalance = $clientBalance + $transactionData['valor'];
-        updateSaldo($id_client, $newBalance);
-    } else {
-        $availableBalance = $clientBalance - $transactionData['valor'];
-        if ($availableBalance < returnNegative($clientLimit)) {
-            releaseLock($id_client);
+    $Exec_updateMoney = updateSaldo((int)$transactionData['valor'], (int)$id_client, $transactionData['descricao'], $transactionData['tipo']);
+
+    if ($Exec_updateMoney === 'Limite ultrapassado') {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Limite ultrapassado'
+        ], HTTP_STATUS_UNPROCESSABLE_ENTITY);
+    } else if ($Exec_updateMoney === 'Erro na transação') {
+        while ($Exec_updateMoney !== 'Transação concluída' && $Exec_updateMoney !== 'Limite ultrapassado') {
+            $Exec_updateMoney = updateSaldo((int)$transactionData['valor'], (int)$id_client, $transactionData['descricao'], $transactionData['tipo']);
+        }
+        if ($Exec_updateMoney === 'Limite ultrapassado') {
             return response()->json([
-                'message' => 'Insufficient funds'
+                'status' => 'error',
+                'message' => 'Limite ultrapassado'
             ], HTTP_STATUS_UNPROCESSABLE_ENTITY);
         }
-        updateSaldo($id_client, $availableBalance);
     }
-
-    insertTransaction($id_client, $transactionData['tipo'], $transactionData['valor'], $transactionData['descricao']);
-    releaseLock($id_client);
 
     return response()->json([
         'limite' => $clientLimit,
@@ -138,40 +216,8 @@ $router->post('/clientes/{id_client}/transacoes', function ($id_client) {
     ], 200);
 });
 
-function getTransactionData($id_client) {
-    $transactionData = request()->all();
-
-    if (!$transactionData['valor'] || !$transactionData['tipo'] || !$transactionData['descricao']) {
-        return null;
-    }
-
-    return $transactionData;
-}
-
-function validateTransactionData($transactionData) {
-    if (!is_numeric($transactionData['valor']) || $transactionData['valor'] < 0) {
-        return false;
-    }
-
-    if (!in_array($transactionData['tipo'], ['c', 'd'])) {
-        return false;
-    }
-
-    if (strlen($transactionData['descricao']) > 10 && strlen($transactionData['descricao']) < 1) {
-        return false;
-    }
-
-    return true;
-}
-
-function acquireLock($id_client) {
-    $islocked = app('db')->select('SELECT acquire_lock(?)', [$id_client]);
-
-    return $islocked[0]->acquire_lock;
-}
-
-function releaseLock($id_client) {
-    $isReleased = app('db')->select('SELECT release_lock(?)', [$id_client]);
-
-    return $isReleased[0]->release_lock;
-}
+$router->get('/teste', function () {
+    return response()->json([
+        'status' => 'ok'
+    ], 200);
+});

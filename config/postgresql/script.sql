@@ -1,9 +1,6 @@
 drop table if exists clientes cascade;
 drop table if exists saldos;
 drop table if exists transacoes;
-drop table if exists locks;
-drop function if exists acquire_lock;
-drop function if exists release_lock;
 
 CREATE TABLE clientes (
     id SERIAL PRIMARY KEY,
@@ -30,33 +27,42 @@ CREATE TABLE transacoes (
 		FOREIGN KEY (cliente_id) REFERENCES clientes(id)
 );
 
-CREATE TABLE locks (
-    id SERIAL PRIMARY KEY,
-    cliente_id INTEGER
-);
-
-CREATE FUNCTION acquire_lock(cliente INTEGER)
-RETURNS BOOLEAN
+CREATE FUNCTION executar_transacao(valor integer, id_usuario integer, descricao text, tipo_transacao text)
+RETURNS VARCHAR
 AS $$
+DECLARE
+    cliente_limite integer;
+    cliente_saldo integer;
+    cliente_saldo_final integer;
 BEGIN
-    IF EXISTS (SELECT cliente_id FROM locks WHERE cliente_id = cliente) THEN
-        RETURN false;
+    LOCK TABLE saldos IN EXCLUSIVE MODE;
+	cliente_limite := (SELECT limite FROM clientes WHERE id = id_usuario);
+    cliente_saldo := (SELECT saldo FROM saldos WHERE cliente_id = id_usuario);
+    cliente_saldo_final := 0;
+    
+    IF (tipo_transacao = 'c') THEN
+        cliente_saldo_final := cliente_saldo + valor;
+        UPDATE saldos SET saldo = cliente_saldo_final WHERE cliente_id = id_usuario;        
+    ELSE
+        cliente_saldo_final := cliente_saldo - valor;
+        IF (cliente_saldo_final < (-1 * cliente_limite)) THEN
+            RETURN 'Limite ultrapassado';
+        END IF;
+        UPDATE saldos SET saldo = cliente_saldo_final WHERE cliente_id = id_usuario;
     END IF;
 
-    INSERT INTO locks (cliente_id) VALUES ( cliente);
+    INSERT INTO transacoes (cliente_id, tipo, valor, descricao) 
+    VALUES (id_usuario, tipo_transacao, valor, descricao);
 
-    RETURN true;
+    RETURN 'Transação concluída';
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            RETURN 'Erro na transação';
 END
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION release_lock(cliente INTEGER)
-RETURNS BOOLEAN
-AS $$
-BEGIN
-    DELETE FROM locks WHERE cliente_id = cliente;
-    RETURN true;
-END
-$$ LANGUAGE plpgsql;
+
 
 INSERT INTO clientes (nome, limite)
 VALUES
